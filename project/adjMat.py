@@ -74,7 +74,7 @@ class AdjacencyMatrixFA:
             else:
                 prev_nonzero_count = new_nonzero_count
 
-    def empty(self) -> bool:
+    def is_empty(self) -> bool:
         fr = np.array(
             [1 if st in self.start_states else 0 for st in range(0, self.mat_size)]
         )
