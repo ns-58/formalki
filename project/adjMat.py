@@ -7,18 +7,7 @@ import numpy as np
 
 
 class AdjacencyMatrixFA:
-    def __init__(
-        self,
-        b_mats: Dict[Symbol, csr_array],
-        start_states: Set[int],
-        final_states: Set[int],
-    ):
-        self.b_mats = b_mats
-        self.start_states = start_states
-        self.final_states = final_states
-        self.mat_size = 0 if not b_mats else ((list(b_mats.values()))[0].shape)[0]
-
-    def from_nfa(nfa: NondeterministicFiniteAutomaton) -> AdjacencyMatrixFA:
+    def __init__(self, nfa: NondeterministicFiniteAutomaton) -> AdjacencyMatrixFA:
         dems = len(nfa.states)
         ids = dict()
         drafts = dict()
@@ -34,13 +23,26 @@ class AdjacencyMatrixFA:
                 data.append(1)
                 row_ind.append((ids[st1.value]))
                 col_ind.append((ids[st2.value]))
-        b_mats = {
+        self.b_mats = {
             sy: csr_array((data, (row_ind, col_ind)), shape=(dems, dems))
             for (sy, (data, row_ind, col_ind)) in drafts.items()
         }
-        final_states = [ids[fs.value] for fs in nfa.final_states]
-        start_states = [ids[ss.value] for ss in nfa.start_states]
-        return AdjacencyMatrixFA(b_mats, start_states, final_states)
+        self.final_states = [ids[fs.value] for fs in nfa.final_states]
+        self.start_states = [ids[ss.value] for ss in nfa.start_states]
+        self.mat_size = (
+            0 if not self.b_mats else ((list(self.b_mats.values()))[0].shape)[0]
+        )
+
+    def Set(
+        self,
+        b_mats: Dict[Symbol, csr_array],
+        start_states: Set[int],
+        final_states: Set[int],
+    ):
+        self.b_mats = b_mats
+        self.start_states = start_states
+        self.final_states = final_states
+        self.mat_size = 0 if not b_mats else ((list(b_mats.values()))[0].shape)[0]
 
     def accepts(self, word: Iterable[Symbol]) -> bool:
         transparents = {sy: m.copy().transpose() for (sy, m) in self.b_mats.items()}
@@ -102,8 +104,9 @@ def intersect_automata(
         if automaton2.b_mats[sy] is None:
             b_mats[sy] = m1
         b_mats[sy] = kron(m1, automaton2.b_mats[sy])
-
-    return AdjacencyMatrixFA(b_mats, start_states, final_states)
+    res = AdjacencyMatrixFA(NondeterministicFiniteAutomaton())
+    res.Set(b_mats, start_states, final_states)
+    return res
 
 
 # fake
