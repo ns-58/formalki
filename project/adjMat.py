@@ -15,6 +15,7 @@ class AdjacencyMatrixFA:
         for st in nfa.states:
             ids[st.value] = pos
             pos = pos + 1
+
         for st1, sy, st2 in nfa:
             if drafts.get(sy) is None:
                 drafts[sy] = ([1], [ids[st1.value]], [ids[st2.value]])
@@ -29,9 +30,7 @@ class AdjacencyMatrixFA:
         }
         self.final_states = [ids[fs.value] for fs in nfa.final_states]
         self.start_states = [ids[ss.value] for ss in nfa.start_states]
-        self.mat_size = (
-            0 if not self.b_mats else ((list(self.b_mats.values()))[0].shape)[0]
-        )
+        self.mat_size = dems
 
     def Set(
         self,
@@ -49,15 +48,18 @@ class AdjacencyMatrixFA:
         fr = np.array(
             [1 if st in self.start_states else 0 for st in range(0, self.mat_size)]
         )
+        if not np.any(fr):
+                return False
         for sy in word:
-            if transparents[sy] is None:
+            if not sy in transparents:
                 return False
             fr = transparents[sy] @ fr
             if not np.any(fr):
                 return False
         for fs in self.final_states:
-            if fr[fs] != 0:
-                return True
+                if fr[fs] != 0:
+                    return True
+
         return False
 
     def trans_closure(self) -> csr_array:
@@ -79,6 +81,8 @@ class AdjacencyMatrixFA:
             [1 if st in self.start_states else 0 for st in range(0, self.mat_size)]
         )
         pos_fins = self.trans_closure().transpose() @ fr
+        if not np.any(pos_fins):
+                return True
         for fs in self.final_states:
             if pos_fins[fs] != 0:
                 return False
@@ -88,22 +92,22 @@ class AdjacencyMatrixFA:
 def intersect_automata(
     automaton1: AdjacencyMatrixFA, automaton2: AdjacencyMatrixFA
 ) -> AdjacencyMatrixFA:
-    size1 = automaton1.mat_size
+    size2 = automaton2.mat_size
     start_states = [
-        st1 * size1 + st2
+        st1 * size2 + st2
         for st1 in automaton1.start_states
         for st2 in automaton2.start_states
     ]
     final_states = [
-        st1 * size1 + st2
+        st1 * size2 + st2
         for st1 in automaton1.final_states
         for st2 in automaton2.final_states
     ]
-    b_mats = automaton2.b_mats.copy()
+
+    b_mats = {}
     for sy, m1 in automaton1.b_mats.items():
-        if automaton2.b_mats[sy] is None:
-            b_mats[sy] = m1
-        b_mats[sy] = kron(m1, automaton2.b_mats[sy])
+        if sy in automaton2.b_mats:
+            b_mats[sy] = kron(m1, automaton2.b_mats[sy])
     res = AdjacencyMatrixFA(NondeterministicFiniteAutomaton())
     res.Set(b_mats, start_states, final_states)
     return res
