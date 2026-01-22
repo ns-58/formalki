@@ -1,6 +1,5 @@
 from __future__ import annotations
 from scipy.sparse import csr_array, kron
-from networkx import MultiDiGraph
 from pyformlang.finite_automaton import NondeterministicFiniteAutomaton, Symbol
 from typing import Dict, Set, Iterable
 import numpy as np
@@ -31,13 +30,18 @@ class AdjacencyMatrixFA:
         self.final_states = [ids[fs.value] for fs in nfa.final_states]
         self.start_states = [ids[ss.value] for ss in nfa.start_states]
         self.mat_size = dems
-        self.trans_states = {v:k for (k,v) in ids.items() if v in self.final_states or v in self.start_states }
+        self.trans_states = {
+            v: k
+            for (k, v) in ids.items()
+            if v in self.final_states or v in self.start_states
+        }
+
     def Set(
         self,
         b_mats: Dict[Symbol, csr_array],
         start_states: Set[int],
         final_states: Set[int],
-        trans_states: Dict[int, int] = {}
+        trans_states: Dict[int, int] = {},
     ):
         self.b_mats = b_mats
         self.start_states = start_states
@@ -51,16 +55,16 @@ class AdjacencyMatrixFA:
             [1 if st in self.start_states else 0 for st in range(0, self.mat_size)]
         )
         if not np.any(fr):
-                return False
+            return False
         for sy in word:
-            if not sy in transparents:
+            if sy not in transparents:
                 return False
             fr = transparents[sy] @ fr
             if not np.any(fr):
                 return False
         for fs in self.final_states:
-                if fr[fs] != 0:
-                    return True
+            if fr[fs] != 0:
+                return True
 
         return False
 
@@ -84,7 +88,7 @@ class AdjacencyMatrixFA:
         )
         pos_fins = self.trans_closure().transpose() @ fr
         if not np.any(pos_fins):
-                return True
+            return True
         for fs in self.final_states:
             if pos_fins[fs] != 0:
                 return False
