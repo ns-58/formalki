@@ -31,17 +31,19 @@ class AdjacencyMatrixFA:
         self.final_states = [ids[fs.value] for fs in nfa.final_states]
         self.start_states = [ids[ss.value] for ss in nfa.start_states]
         self.mat_size = dems
-
+        self.trans_states = {v:k for (k,v) in ids.items() if v in self.final_states or v in self.start_states }
     def Set(
         self,
         b_mats: Dict[Symbol, csr_array],
         start_states: Set[int],
         final_states: Set[int],
+        trans_states: Dict[int, int] = {}
     ):
         self.b_mats = b_mats
         self.start_states = start_states
         self.final_states = final_states
         self.mat_size = 0 if not b_mats else ((list(b_mats.values()))[0].shape)[0]
+        self.trans_states = trans_states
 
     def accepts(self, word: Iterable[Symbol]) -> bool:
         transparents = {sy: m.copy().transpose() for (sy, m) in self.b_mats.items()}
@@ -69,7 +71,7 @@ class AdjacencyMatrixFA:
             acc = acc.maximum(mat)
         prev_nonzero_count = acc.count_nonzero()
         while True:
-            acc = acc * acc
+            acc = acc @ acc
             new_nonzero_count = acc.count_nonzero()
             if new_nonzero_count == prev_nonzero_count:
                 return acc
@@ -111,10 +113,3 @@ def intersect_automata(
     res = AdjacencyMatrixFA(NondeterministicFiniteAutomaton())
     res.Set(b_mats, start_states, final_states)
     return res
-
-
-# fake
-def tensor_based_rpq(
-    regex: str, graph: MultiDiGraph, start_nodes: set[int], final_nodes: set[int]
-) -> set[tuple[int, int]]:
-    return set()
