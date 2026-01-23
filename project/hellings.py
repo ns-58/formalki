@@ -42,5 +42,9 @@ def hellings_based_cfpq(
                 if r.count((nt3, v, w)) == 0:
                     r.append((nt3, v, w))
                     m.append(((nt3, v, w)))
-    result = {(v, u) for (nt, v, u) in r if nt == pyformlang.cfg.Terminal("S")}
+    result = {
+        (v, u)
+        for (nt, v, u) in r
+        if nt == pyformlang.cfg.Terminal("S") and v in start_nodes and u in final_nodes
+    }
     return result
