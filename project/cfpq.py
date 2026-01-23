@@ -48,3 +48,12 @@ def hellings_based_cfpq(
         if nt == pyformlang.cfg.Terminal("S") and v in start_nodes and u in final_nodes
     }
     return result
+
+
+def matrix_based_cfpq(
+    cfg: pyformlang.cfg.CFG,
+    graph: nx.DiGraph,
+    start_nodes: Set[int] = None,
+    final_nodes: Set[int] = None,
+) -> set[tuple[int, int]]:
+  pass
