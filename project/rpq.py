@@ -5,6 +5,7 @@ from project.automata import graph_to_nfa, regex_to_dfa
 from project.adjMat import AdjacencyMatrixFA, intersect_automata
 from numpy import array
 
+
 def tensor_based_rpq(
     regex: str, graph: MultiDiGraph, start_nodes: set[int], final_nodes: set[int]
 ) -> set[tuple[int, int]]:
