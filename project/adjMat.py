@@ -17,14 +17,14 @@ class AdjacencyMatrixFA:
 
         for st1, sy, st2 in nfa:
             if drafts.get(sy) is None:
-                drafts[sy] = ([1], [ids[st1.value]], [ids[st2.value]])
+                drafts[sy] = ([True], [ids[st1.value]], [ids[st2.value]])
             else:
                 data, row_ind, col_ind = drafts.get(sy)
-                data.append(1)
+                data.append(True)
                 row_ind.append((ids[st1.value]))
                 col_ind.append((ids[st2.value]))
         self.b_mats = {
-            sy: csr_array((data, (row_ind, col_ind)), shape=(dems, dems))
+            sy: csr_array((data, (row_ind, col_ind)), shape=(dems, dems), dtype=bool)
             for (sy, (data, row_ind, col_ind)) in drafts.items()
         }
         self.final_states = [ids[fs.value] for fs in nfa.final_states]
@@ -52,7 +52,7 @@ class AdjacencyMatrixFA:
     def accepts(self, word: Iterable[Symbol]) -> bool:
         transparents = {sy: m.copy().transpose() for (sy, m) in self.b_mats.items()}
         fr = np.array(
-            [1 if st in self.start_states else 0 for st in range(0, self.mat_size)]
+            [st in self.start_states for st in range(0, self.mat_size)], dtype=bool
         )
         if not np.any(fr):
             return False
@@ -63,16 +63,18 @@ class AdjacencyMatrixFA:
             if not np.any(fr):
                 return False
         for fs in self.final_states:
-            if fr[fs] != 0:
+            if fr[fs]:
                 return True
 
         return False
 
     def trans_closure(self) -> csr_array:
-        acc: csr_array = csr_array(([], ([], [])), shape=(self.mat_size, self.mat_size))
-        acc.setdiag(np.ones(self.mat_size))
+        acc: csr_array = csr_array(
+            ([], ([], [])), shape=(self.mat_size, self.mat_size), dtype=bool
+        )
+        acc.setdiag(np.ones(self.mat_size, dtype=bool))
         for mat in self.b_mats.values():
-            acc = acc.maximum(mat)
+            acc = acc + mat
         prev_nonzero_count = acc.count_nonzero()
         while True:
             acc = acc @ acc
@@ -84,13 +86,13 @@ class AdjacencyMatrixFA:
 
     def is_empty(self) -> bool:
         fr = np.array(
-            [1 if st in self.start_states else 0 for st in range(0, self.mat_size)]
+            [st in self.start_states for st in range(0, self.mat_size)], dtype=bool
         )
         pos_fins = self.trans_closure().transpose() @ fr
         if not np.any(pos_fins):
             return True
         for fs in self.final_states:
-            if pos_fins[fs] != 0:
+            if pos_fins[fs]:
                 return False
         return True
 
