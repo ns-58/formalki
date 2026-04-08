@@ -51,12 +51,7 @@ class AdjacencyMatrixFA:
 
     def accepts(self, word: Iterable[Symbol]) -> bool:
         transparents = {sy: m.copy().transpose() for (sy, m) in self.b_mats.items()}
-        fr = np.array(
-            [
-                True if st in self.start_states else False
-                for st in range(0, self.mat_size)
-            ]
-        )
+        fr = np.array([st in self.start_states for st in range(0, self.mat_size)])
         if not np.any(fr):
             return False
         for sy in word:
@@ -88,12 +83,7 @@ class AdjacencyMatrixFA:
                 prev_nonzero_count = new_nonzero_count
 
     def is_empty(self) -> bool:
-        fr = np.array(
-            [
-                True if st in self.start_states else False
-                for st in range(0, self.mat_size)
-            ]
-        )
+        fr = np.array([st in self.start_states for st in range(0, self.mat_size)])
         pos_fins = self.trans_closure().transpose() @ fr
         if not np.any(pos_fins):
             return True
