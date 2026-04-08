@@ -21,7 +21,8 @@ def tensor_based_rpq(
             acc.append((start_ind, start_ind))
         if tcT.count_nonzero() > 0:
             start_vector = np.array(
-                [int(i == start_ind) for i in range(0, aut1.mat_size * aut2.mat_size)]
+                [(i == start_ind) for i in range(0, aut1.mat_size * aut2.mat_size)],
+                dtype=bool,
             )
             pos_fins = find(tcT @ start_vector)[1]
             for fin_ind in aut.final_states:
