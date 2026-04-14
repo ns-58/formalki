@@ -47,6 +47,6 @@ def hellings_based_cfpq(
     result = {
         (v, u)
         for (nt, v, u) in r
-        if nt == pyformlang.cfg.Terminal("S") and v in start_nodes and u in final_nodes
+        if nt == cfg.start_symbol and v in start_nodes and u in final_nodes
     }
     return result
