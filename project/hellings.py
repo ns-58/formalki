@@ -9,6 +9,8 @@ def hellings_based_cfpq(
     start_nodes: set[int] = None,
     final_nodes: set[int] = None,
 ) -> set[tuple[int, int]]:
+    start_nodes = start_nodes if start_nodes else set(graph.nodes)
+    final_nodes = final_nodes if final_nodes else set(graph.nodes)
     cfg = cfg_to_weak_normal_form(cfg)
     r = []
     for p in cfg.productions:
