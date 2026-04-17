@@ -2,7 +2,6 @@ import pyformlang
 from itertools import groupby
 from pyformlang.regular_expression import Regex
 from functools import reduce
-from project.automata import regex_to_dfa
 
 
 class NoStartRulesError(Exception):

@@ -144,8 +144,6 @@ def tensor_based_cfpq(
         coord += aut.mat_size
         block_max_coords.append((coord, sym))
     starts, finals, alph = set(starts), set(finals), set(alph)
-    # with open ('000.txt', 'w') as f:
-    #         f.write(str(alph))
     aut1 = AdjacencyMatrixFA(NondeterministicFiniteAutomaton())
     aut1.Set(
         {
@@ -170,19 +168,14 @@ def tensor_based_cfpq(
     while not finish:
         # todo: use distrib. instead
         aut = intersect_automata(aut1, aut2)
-        # with open ('000.txt', 'w') as f:
-        #     f.write(str(aut2.b_mats.keys()))
-        #     f.write(str(aut1.b_mats.keys()))
-
         finish = True
         tc = aut.trans_closure()
         nonzero = find(tc)
-        # with open ('000.txt', 'w') as f:
-        #     f.write(str(list(zip(nonzero[0], nonzero[1]))))
-        # f.write (str(aut.start_states))
-        # f.write (str(aut.final_states))
         for s, f in zip(nonzero[0], nonzero[1]):
-            if s in aut.start_states and f in aut.final_states:
+            if (
+                s // aut2.mat_size in aut1.start_states
+                and f // aut2.mat_size in aut1.final_states
+            ):
                 syms = tuple(
                     map(
                         lambda st: next(
@@ -218,4 +211,5 @@ def tensor_based_cfpq(
     return {
         (aut2.trans_states[s], aut2.trans_states[f])
         for (s, f) in zip(nonzero[0], nonzero[1])
+        if s in aut2.start_states and f in aut2.final_states
     }
