@@ -1,9 +1,10 @@
 from project.cfg import cfg_to_weak_normal_form
 import pyformlang
 import networkx as nx
-from scipy.sparse import find, csr_array
-from project.adjMat import AdjacencyMatrixFA
+from scipy.sparse import find, csr_array, block_diag, eye_array
+from project.adjMat import AdjacencyMatrixFA, intersect_automata
 from project.automata import graph_to_nfa
+from pyformlang.finite_automaton import NondeterministicFiniteAutomaton, Symbol
 
 
 def hellings_based_cfpq(
@@ -119,3 +120,102 @@ def get_with_def(dict, k, default):
         return dict[k]
     else:
         return default
+
+
+def tensor_based_cfpq(
+    rsm: pyformlang.rsa.RecursiveAutomaton,
+    graph: nx.DiGraph,
+    start_nodes: set[int] = None,
+    final_nodes: set[int] = None,
+) -> set[tuple[int, int]]:
+    aut2 = AdjacencyMatrixFA(graph_to_nfa(graph, start_nodes, final_nodes))
+    coord = 0
+    block_max_coords, auts = [], []
+    alph = []
+    starts, finals = [], []
+    for sym, b in rsm.boxes.items():
+        aut = AdjacencyMatrixFA(b.dfa)
+        if aut.accepts([]):  # epsilon
+            aut2.b_mats[sym] = eye_array(aut2.mat_size, dtype=bool)
+        auts.append(aut)
+        alph += aut.b_mats.keys()
+        starts += [s + coord for s in aut.start_states]
+        finals += [s + coord for s in aut.final_states]
+        coord += aut.mat_size
+        block_max_coords.append((coord, sym))
+    starts, finals, alph = set(starts), set(finals), set(alph)
+    # with open ('000.txt', 'w') as f:
+    #         f.write(str(alph))
+    aut1 = AdjacencyMatrixFA(NondeterministicFiniteAutomaton())
+    aut1.Set(
+        {
+            sym: block_diag(
+                [
+                    csr_array(
+                        ([], ([], [])), shape=(a.mat_size, a.mat_size), dtype=bool
+                    )
+                    if sym not in a.b_mats
+                    else a.b_mats[sym]
+                    for a in auts
+                ],
+                format="csr",
+            )
+            for sym in alph
+        },
+        starts,
+        finals,
+    )
+
+    finish = False
+    while not finish:
+        # todo: use distrib. instead
+        aut = intersect_automata(aut1, aut2)
+        # with open ('000.txt', 'w') as f:
+        #     f.write(str(aut2.b_mats.keys()))
+        #     f.write(str(aut1.b_mats.keys()))
+
+        finish = True
+        tc = aut.trans_closure()
+        nonzero = find(tc)
+        # with open ('000.txt', 'w') as f:
+        #     f.write(str(list(zip(nonzero[0], nonzero[1]))))
+        # f.write (str(aut.start_states))
+        # f.write (str(aut.final_states))
+        for s, f in zip(nonzero[0], nonzero[1]):
+            if s in aut.start_states and f in aut.final_states:
+                syms = tuple(
+                    map(
+                        lambda st: next(
+                            (
+                                sy
+                                for (max_coord, sy) in block_max_coords
+                                if max_coord * aut2.mat_size > st
+                            ),
+                            None,
+                        ),
+                        (s, f),
+                    )
+                )
+
+                if syms[0] == syms[1]:
+                    v = csr_array(
+                        ([True], ([s % aut2.mat_size], [f % aut2.mat_size])),
+                        shape=(aut2.mat_size, aut2.mat_size),
+                        dtype=bool,
+                    )
+                    if syms[0] not in aut2.b_mats:
+                        finish = False
+                        aut2.b_mats[syms[0]] = v
+                    else:
+                        nnz_count = aut2.b_mats[syms[0]].count_nonzero()
+                        aut2.b_mats[syms[0]] = aut2.b_mats[syms[0]] + v
+                        if nnz_count != aut2.b_mats[syms[0]].count_nonzero():
+                            finish = False
+
+    if Symbol(rsm.initial_label) not in aut2.b_mats:
+        return set()
+    nonzero = find(aut2.b_mats[Symbol(rsm.initial_label)])
+    return {
+        (aut2.trans_states[s], aut2.trans_states[f])
+        for (s, f) in zip(nonzero[0], nonzero[1])
+    }
