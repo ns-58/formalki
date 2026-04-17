@@ -37,4 +37,4 @@ def cfg_to_rsm(cfg: pyformlang.cfg.CFG) -> pyformlang.rsa.RecursiveAutomaton:
 
 
 def ebnf_to_rsm(ebnf: str) -> pyformlang.rsa.RecursiveAutomaton:
-    return pyformlang.rsa.from_ebnf(ebnf)
+    return pyformlang.rsa.RecursiveAutomaton.from_text(ebnf)

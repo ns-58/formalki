@@ -166,7 +166,6 @@ def tensor_based_cfpq(
 
     finish = False
     while not finish:
-        # todo: use distrib. instead
         aut = intersect_automata(aut1, aut2)
         finish = True
         tc = aut.trans_closure()
