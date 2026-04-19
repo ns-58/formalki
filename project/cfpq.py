@@ -7,6 +7,8 @@ from project.automata import graph_to_nfa
 from pyformlang.finite_automaton import NondeterministicFiniteAutomaton, Symbol
 
 
+
+
 def hellings_based_cfpq(
     cfg: pyformlang.cfg.CFG,
     graph: nx.DiGraph,
@@ -128,6 +130,8 @@ def tensor_based_cfpq(
     start_nodes: set[int] = None,
     final_nodes: set[int] = None,
 ) -> set[tuple[int, int]]:
+    start_nodes = start_nodes if start_nodes else set(graph.nodes)
+    final_nodes = final_nodes if final_nodes else set(graph.nodes)
     aut2 = AdjacencyMatrixFA(graph_to_nfa(graph, start_nodes, final_nodes))
     coord = 0
     block_max_coords, auts = [], []
