@@ -7,8 +7,6 @@ from project.automata import graph_to_nfa
 from pyformlang.finite_automaton import NondeterministicFiniteAutomaton, Symbol
 
 
-
-
 def hellings_based_cfpq(
     cfg: pyformlang.cfg.CFG,
     graph: nx.DiGraph,
