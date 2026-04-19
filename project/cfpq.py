@@ -1,12 +1,16 @@
 from project.cfg import cfg_to_weak_normal_form
 import pyformlang
 import networkx as nx
+from typing import Tuple, Iterable
 from scipy.sparse import find, csr_array, block_diag, eye_array
 from project.adjMat import AdjacencyMatrixFA, intersect_automata
 from project.automata import graph_to_nfa
-from pyformlang.finite_automaton import NondeterministicFiniteAutomaton, Symbol
-
-
+from pyformlang.finite_automaton import (
+    NondeterministicFiniteAutomaton,
+    Symbol,
+    State,
+    DeterministicFiniteAutomaton,
+)
 
 
 def hellings_based_cfpq(
@@ -216,3 +220,109 @@ def tensor_based_cfpq(
         for (s, f) in zip(nonzero[0], nonzero[1])
         if s in aut2.start_states and f in aut2.final_states
     }
+
+
+def gll_based_cfpq(
+    rsm: pyformlang.rsa.RecursiveAutomaton,
+    graph: nx.DiGraph,
+    start_nodes: set[int] = None,
+    final_nodes: set[int] = None,
+) -> set[tuple[int, int]]:
+    # with open("111.txt", "w") as ff:
+        start_nodes = start_nodes if start_nodes else set(graph.nodes)
+        final_nodes = final_nodes if final_nodes else set(graph.nodes)
+        start_gss_nodes = []
+        start_descr = []
+        s = rsm.initial_label
+        for n in start_nodes:
+            for st in rsm.boxes[s].dfa.start_states:
+                gss_node = ((s, st.value), n)
+                start_gss_nodes.append(gss_node)
+                start_descr.append((n, (s, st.value), gss_node))
+        gss = nx.DiGraph()
+        gss.add_nodes_from(
+            start_gss_nodes,
+        )
+        nts = rsm.labels
+        stack = start_descr
+        descrs = set(start_descr)
+        pop_res = dict()
+        res = set()
+        while stack:
+            # ff.write("stack: " + str(stack) + "\n")
+            (n, (nt, st), gss_node1) = stack.pop()
+            # ff.write("n: " + str(n) + "\n")
+            # ff.write("nt: " + str(nt) + "\n")
+            # ff.write("st: " + str(st) + "\n")
+            # ff.write("gss_node1: " + str(gss_node1) + "\n")
+            process = [(st, n)]
+            descrs_to_add = []
+            nt_dfa = rsm.boxes[nt].dfa
+
+            while process:
+                # ff.write("process: " + str(process) + "\n")
+                # ff.write("pop_res:" + str(pop_res) + "\n")
+                (st1, n1) = process.pop()
+                for sym2, st2 in get_transitions_from(nt_dfa, st1):
+                    if sym2 in nts:
+                        # ff.write("it's nt: " + str(sym2) + "\n")
+                        for start_st in rsm.boxes[sym2].dfa.start_states:
+                            gss_node2 = ((sym2, start_st.value), n1)
+                            # ff.write("gss_node2: " + str(gss_node2) + "\n")
+                            if not gss.has_edge(gss_node2, gss_node1):
+                                gss.add_edges_from(
+                                    [(gss_node2, gss_node1, {"slots": {(nt, st2)}})]
+                                )
+                            else:
+                                gss[gss_node2][gss_node1]["slots"].add((nt, st2))
+                            # ff.write("gss_edges: " + str(gss.edges(data=True)) + "\n")
+                            if gss_node2 in pop_res:
+                                for n0 in pop_res[gss_node2]:
+                                    descrs_to_add.append((n0, (nt, st2), gss_node1))
+                            else:
+                                descrs_to_add.append(
+                                    (n1, (sym2, start_st.value), gss_node2)
+                                )
+                    else:
+                        # ff.write("it's t: " + str(sym2) + "\n")
+                        for n2 in [
+                            vertex
+                            for (_, vertex, data) in graph.edges(n1, data=True)
+                            if data["label"] == sym2.value
+                        ]:
+                            process.append((st2, n2))
+                            # ff.write("add to process: " + str((st2, n2)) + "\n")
+
+                if st1 in nt_dfa.final_states:
+                    if gss_node1 not in pop_res:
+                        pop_res[gss_node1] = {n1}
+                    else:
+                        pop_res[gss_node1].add(n1)
+                    # ff.write("that st1 is final state in dfa: " + str(st1) + "\n")
+                    for _, gss_node2, data in gss.edges(gss_node1, data=True):
+                        # ff.write("pop_res:" + str(pop_res) + "\n")
+
+                        # ff.write("pop_res:" + str(pop_res) + "\n")
+
+                        for sl in data["slots"]:
+                            assert isinstance(sl, Tuple)
+                            descrs_to_add.append((n1, sl, gss_node2))
+                    if nt == s and n1 in final_nodes and gss_node1 in start_gss_nodes:
+                        # ff.write("new res: " + str((gss_node1[1], n1)) + "\n")
+                        res.add((gss_node1[1], n1))
+
+            for d in descrs_to_add:
+                if d not in descrs:
+                    # ff.write("1st time see that d: " + str(d) + "\n")
+                    stack.append(d)
+                    descrs.add(d)
+                # ff.write("seen that d before: " + str(d) + "\n")
+
+        return res
+
+
+def get_transitions_from(
+    dfa: DeterministicFiniteAutomaton, state_from: State
+) -> Iterable[Tuple[Symbol, State]]:
+    if state_from in dfa._transition_function._transitions:
+        yield from dfa._transition_function._transitions[state_from].items()
