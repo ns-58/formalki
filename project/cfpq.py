@@ -245,7 +245,7 @@ def gll_based_cfpq(
         )
         nts = rsm.labels
         stack = start_descr
-        descrs = set(start_descr)
+        descrs_unique = set(start_descr)
         pop_res = dict()
         res = set()
         while stack:
@@ -256,6 +256,7 @@ def gll_based_cfpq(
             # ff.write("st: " + str(st) + "\n")
             # ff.write("gss_node1: " + str(gss_node1) + "\n")
             process = [(st, n)]
+            process_unique = set(process)
             descrs_to_add = []
             nt_dfa = rsm.boxes[nt].dfa
 
@@ -290,7 +291,9 @@ def gll_based_cfpq(
                             for (_, vertex, data) in graph.edges(n1, data=True)
                             if data["label"] == sym2.value
                         ]:
-                            process.append((st2, n2))
+                            if (st2, n2) not in process_unique:
+                                process.append((st2, n2))
+                                process_unique.add((st2, n2))
                             # ff.write("add to process: " + str((st2, n2)) + "\n")
 
                 if st1 in nt_dfa.final_states:
@@ -312,10 +315,10 @@ def gll_based_cfpq(
                         res.add((gss_node1[1], n1))
 
             for d in descrs_to_add:
-                if d not in descrs:
+                if d not in descrs_unique:
                     # ff.write("1st time see that d: " + str(d) + "\n")
                     stack.append(d)
-                    descrs.add(d)
+                    descrs_unique.add(d)
                 # ff.write("seen that d before: " + str(d) + "\n")
 
         return res
