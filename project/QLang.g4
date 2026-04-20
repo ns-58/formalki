@@ -18,13 +18,13 @@ set_expr: '[' expr (',' expr)* ']' ;
 
 edge_expr: '(' expr ',' expr ',' expr ')' ;
 
-regexp: 
-CHAR 
-| VAR 
+regexp:
+CHAR
+| VAR
 | '(' regexp ')'
 | regexp '|' regexp
 | regexp '^' range
-| regexp '.' regexp 
+| regexp '.' regexp
 | regexp '&' regexp
 ;
 
