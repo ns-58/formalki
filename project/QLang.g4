@@ -1,6 +1,6 @@
 grammar QLang;
 
-prog: stmt*;
+prog: stmt* '<EOF>'?;
 
 stmt: bind | add | remove | declare ;
 

@@ -5,20 +5,33 @@ from antlr4 import (
     ParseTreeWalker,
     TerminalNode,
 )
+from antlr4.error.ErrorListener import ErrorListener
 from project.QLangLexer import QLangLexer
 from project.QLangParser import QLangParser
 from project.QLangListener import QLangListener
 from project.QLangVisitor import QLangVisitor
 
 
+class LexerErrorListener(ErrorListener):
+    def __init__(self) -> None:
+        self.cntr = 0
+
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e) -> None:
+        self.cntr += 1
+        super().syntaxError(recognizer, offendingSymbol, line, column, msg, e)
+
+
 # Второе поле показывает корректна ли строка (True, если корректна)
 def program_to_tree(program: str) -> tuple[ParserRuleContext, bool]:
     input_stream = InputStream(program)
     lexer = QLangLexer(input_stream)
+    lexer.removeErrorListener
+    lex_err_listener = LexerErrorListener()
+    lexer.addErrorListener(lex_err_listener)
     stream = CommonTokenStream(lexer)
     parser = QLangParser(stream)
     tree = parser.prog()
-    return (tree, parser.getNumberOfSyntaxErrors() == 0)
+    return (tree, lex_err_listener.cntr == 0 and parser.getNumberOfSyntaxErrors() == 0)
 
 
 class Nodes_Counter(QLangListener):
