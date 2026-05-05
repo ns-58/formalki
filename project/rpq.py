@@ -1,5 +1,5 @@
 from __future__ import annotations
-from scipy.sparse import find, csr_array
+from scipy.sparse import find, csc_array, hstack
 from networkx import MultiDiGraph
 from project.automata import graph_to_nfa, regex_to_dfa
 from project.adjMat import AdjacencyMatrixFA, intersect_automata
@@ -48,37 +48,59 @@ def ms_bfs_based_rpq(
     both = [
         (v.transpose(), aut1.b_mats[k])
         for (k, v) in aut2.b_mats.items()
-        if k in aut1.b_mats.keys()
+        if k in aut1.b_mats.keys() and v.count_nonzero() != 0
     ]
     res = set()
-    for s2 in aut2.start_states:
+    fronts: list[csc_array] = []
+    aut2_start_states = list(aut2.start_states)
+
+    for s2 in aut2_start_states:
         data, column_ind = [], []
         for s1 in aut1.start_states:
             data.append(True)
             column_ind.append(s1)
-        front = csr_array(
-            (data, ([s2 for _ in data], column_ind)),
-            shape=(aut2.mat_size, aut1.mat_size),
-            dtype=bool,
+        fronts.append(
+            csc_array(
+                (data, ([s2 for _ in data], column_ind)),
+                shape=(aut2.mat_size, aut1.mat_size),
+                dtype=bool,
+            )
         )
-        acc = front.copy()
-        while True:
-            prev_nonzero_count = acc.count_nonzero()
-            todo = []
-            for gT, q in both:
-                todo.append(gT @ front @ q)
-            if len(todo) > 0:
-                front = todo[0]
-                for m in todo[1:]:
-                    front = front + m
-                acc = acc + front
-            new_nonzero_count = acc.count_nonzero()
-            if prev_nonzero_count == new_nonzero_count:
-                nonzero = find(acc)
-                for i in range(0, len(nonzero[0])):
-                    pos_fin = nonzero[0][i]
-                    if pos_fin in aut2.final_states:
-                        if nonzero[1][i] in aut1.final_states:
-                            res.add((aut2.trans_states[s2], aut2.trans_states[pos_fin]))
-                break
+    for f in fronts:
+        assert f.shape == (aut2.mat_size, aut1.mat_size)
+    fr = hstack(fronts)
+
+    acc = fr.copy()
+    fronts_count = len(fronts)
+
+    while fr.count_nonzero() != 0:
+        todo = []
+        for gT, q in both:
+            tmp = gT @ fr
+
+            for i in range(0, fronts_count):
+                tmp[:, i * aut1.mat_size : (i + 1) * aut1.mat_size] = (
+                    tmp[:, i * aut1.mat_size : (i + 1) * aut1.mat_size] @ q
+                )
+            todo.append(tmp)
+        if len(todo) > 0:
+            fr = todo[0]
+            for m in todo[1:]:
+                fr = fr.maximum(m)
+
+        fr = fr.minimum(fr - acc)
+        acc = acc.maximum(fr)
+    nonzero = find(acc)
+
+    for pos_fin in zip(nonzero[0], nonzero[1]):
+        if (
+            pos_fin[0] in aut2.final_states
+            and pos_fin[1] % aut1.mat_size in aut1.final_states
+        ):
+            res.add(
+                (
+                    aut2.trans_states[aut2_start_states[pos_fin[1] // aut1.mat_size]],
+                    aut2.trans_states[pos_fin[0]],
+                )
+            )
     return res
